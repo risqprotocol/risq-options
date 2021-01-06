@@ -4,14 +4,14 @@ const WBTC = artifacts.require("FakeWBTC")
 const RISQ = artifacts.require("FakeRISQ")
 const PriceProvider = artifacts.require("FakePriceProvider")
 const BTCPriceProvider = artifacts.require("FakeBTCPriceProvider")
-const ETHOptions = artifacts.require("RisqETHOptions")
-const WBTCOptions = artifacts.require("RisqWBTCOptions")
-const ETHPool = artifacts.require("RisqETHPool")
-const ERCPool = artifacts.require("RisqERCPool")
-const StakingETH = artifacts.require("RisqStakingETH")
-const StakingWBTC = artifacts.require("RisqStakingWBTC")
-const ETHRewards = artifacts.require("RisqETHRewards")
-const WBTCRewards = artifacts.require("RisqWBTCRewards")
+const ETHOptions = artifacts.require("ETHOptions")
+const WBTCOptions = artifacts.require("WBTCOptions")
+const ETHPool = artifacts.require("ETHPool")
+const WBTCPool = artifacts.require("WBTCPool")
+const StakingETH = artifacts.require("StakingETH")
+const StakingWBTC = artifacts.require("StakingWBTC")
+const ETHRewards = artifacts.require("ETHRewards")
+const WBTCRewards = artifacts.require("WBTCRewards")
 const ETHStakingRewards = artifacts.require("ETHStakingRewards")
 const WBTCStakingRewards = artifacts.require("WBTCStakingRewards")
 const BC = artifacts.require("LinearBondingCurve")
@@ -19,8 +19,8 @@ const BC = artifacts.require("LinearBondingCurve")
 const CONTRACTS_FILE = process.env.CONTRACTS_FILE
 
 const params = {
-    ETHPrice: new BN(380e8),
-    BTCPrice: new BN("1161000000000"),
+    ETHPrice: new BN(1100e8), //eth price in usd
+    BTCPrice: new BN("3200000000000"), //btc price in usd 
     ETHtoBTC(){return this.ETHPrice.mul(new BN("10000000000000000000000000000000")).div(this.BTCPrice)},
     ExchangePrice: new BN(30e8),
     BC:{
@@ -44,6 +44,7 @@ module.exports = async function (deployer, network, [account]) {
 
       await deployer.deploy(ETHOptions,
           PriceProvider.address,
+          ETHPool.address,
           StakingETH.address
       )
       await deployer.deploy(WBTCOptions,
@@ -106,7 +107,7 @@ module.exports = async function (deployer, network, [account]) {
               },
               WBTCPool: {
                   address: await WBTCOptions.deployed().then(x => x.pool()),
-                  abi: await ERCPool.abi
+                  abi: await WBTCPool.abi
               },
               ETHStaking: {
                   address: StakingETH.address,

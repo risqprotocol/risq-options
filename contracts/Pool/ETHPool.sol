@@ -23,11 +23,11 @@ import "../Interfaces/Interfaces.sol";
 
 
 /**
- * @author 0mllwntrmt3
+ * @author macemclain
  * @title Risq ETH Liquidity Pool
  * @notice Accumulates liquidity in ETH from LPs and distributes P&L in ETH
  */
-contract RisqETHPool is
+contract ETHPool is
     IETHLiquidityPool,
     Ownable,
     ERC20("Risq ETH LP Token", "writeETH")
@@ -123,7 +123,7 @@ contract RisqETHPool is
     }
 
     /*
-     * @nonce calls by RisqOptions to unlock the funds
+     * @nonce calls by Options to unlock the funds
      * @param id Id of LockedLiquidity that should be unlocked
      */
     function unlock(uint256 id) external override onlyOwner {

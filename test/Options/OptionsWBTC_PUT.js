@@ -1,22 +1,23 @@
 const {getContracts, timeTravel, toWei, OptionType} = require("../utils/utils.js")
-const {testCallPrices} = require("./Prices.js")
+const {testPutPrices} = require("./Prices.js")
 const toBN = web3.utils.toBN
 const toBTC = x=> toBN(toWei(x)).div(toBN(1e10))
-const priceTestPoints = [0, 50, 75, 95, 100, 105, 125, 150, 200]
+const priceTestPoints = [ 50, 75, 95, 100, 105, 125, 150, 1000]
 
-module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, user3, user4]) => {
+module.exports.test = () => contract("WBTCOptions(put)", ([user1, user2, user3, user4]) => {
   const contracts = getContracts()
   const pricesBuf = []
-  async function createOption({period, amount, strike, user} = {}) {
-    const {WBTCOptions, BTCPriceProvider} = await contracts
-    const price =  await BTCPriceProvider.latestAnswer()
+
+  async function createOption(params = {}) {
+    const {period, amount, strike, user} = params
+    const {WBTCOptions, WBTCPool, BTCPriceProvider} = await contracts
     const [_period, _amount, _strike, from] = [
       toBN(24 * 3600 * (period || 1)),
       toBN(amount || toBTC(0.1)),
-      toBN(strike || price),
+      toBN(strike || (await BTCPriceProvider.latestAnswer())),
       user || user1,
     ]
-    const _type = OptionType.Call
+    const _type = OptionType.Put
     const [value, settlementFee] = await WBTCOptions.fees(
       _period,
       _amount,
@@ -24,8 +25,8 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
       _type
   ).then((x) => [x.totalETH, x.settlementFee])
     const createEvent = await WBTCOptions.create(_period, _amount, _strike, _type, {
-              value,
-              from,
+            value,
+            from,
         })
         .then((x) => x.logs.find((x) => x.event == "Create"))
         .then((x) => (x ? x.args : null))
@@ -60,40 +61,48 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
 
     let result
 
-    if (exercisePrice.lt(strike)) {
+    if (exercisePrice.gt(strike)) {
       await WBTCOptions.exercise(id).then(
-        () => assert.fail("Exercising a call option should be canceled"),
+        () => assert.fail("Exercising a put option should be canceled"),
         (x) => {
           assert.equal(
             x.reason,
-            "Current price is too low",
+            "Current price is too high",
             "Wrong error reason"
           )
           result = "rejected"
         }
       )
     } else {
-      const expectedProfit = amount
-        .mul(exercisePrice.sub(strike))
+      const locked = toBN(await WBTCOptions.options(id).then(x => x.lockedAmount));
+      const countedProfit = amount
+        .mul(strike.sub(exercisePrice))
         .div(exercisePrice)
+      const expectedProfit = countedProfit.gt(locked) ? locked : countedProfit
       const startBalance = await web3.eth.getBalance(user1)
       const {profit} = await WBTCOptions.exercise(id).then(
         (x) => x.logs.find((x) => x.event == "Exercise").args
       )
       const endBalance = await web3.eth.getBalance(user1)
-      assert(amount.gt(expectedProfit), "too large expected profit")
+      assert(
+        amount.mul(strike).div(toBN(1e8)).gte(expectedProfit),
+        "too large expected profit"
+      )
       assert.equal(
         profit.toString(),
         expectedProfit.toString(),
-        "wrong profit amount"
+        "wrong profit amount (1)"
       )
       // assert.equal(
-      //     endBalance.sub(startBalance).toString(),
-      //     expectedProfit.toString(),
-      //     "wrong profit amount",
+      //   endBalance.sub(startBalance).toString(),
+      //   expectedProfit.toString(),
+      //   "wrong profit amount (2)"
       // )
       result = profit / 1e18
     }
+
+    const usdFee = totalFee.mul(createPrice) / 1e26
+
     pricesBuf.push({
       period,
       amount: amount / 1e18,
@@ -101,14 +110,15 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
       strike: strike / 1e8,
       exercisePrice: exercisePrice / 1e8,
       totalFee: totalFee / 1e18,
+      usdFee,
       profit: result,
-      profitSF: result - totalFee / 1e18,
+      profitSF: typeof result == "number" ? result - totalFee : result,
     })
 
     await BTCPriceProvider.setPrice(backupPrice)
   }
 
-  testCallPrices(contracts.then(x=>[x.WBTCOptions, x.BTCPriceProvider]))
+  testPutPrices(contracts.then(x=>[x.WBTCOptions, x.BTCPriceProvider]))
 
   it("Should be owned by the first account", async () => {
     const {WBTCOptions} = await contracts
@@ -128,13 +138,14 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     )
   })
 
-  it("Should provide funds to the pool", async () => {
-    const {WBTCPool, WBTC} = await contracts
-    const value = toWei(50)
-    await WBTC.mint(value, {from: user4})
-    await WBTC.approve(WBTCPool.address, value, {from: user4})
-    await WBTCPool.provide(value, 0, {from: user4})
-  })
+
+it("Should provide funds to the pool", async () => {
+  const {WBTCPool, WBTC} = await contracts
+  const value = toWei(50)
+  await WBTC.mint(value, {from: user4})
+  await WBTC.approve(WBTCPool.address, value, {from: user4})
+  await WBTCPool.provide(value, 0, {from: user4})
+})
 
   it("Should create an option", async () => {
     const createEvent = await createOption()
@@ -165,7 +176,7 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     const {WBTCOptions} = await contracts
     const {id} = await createOption()
     await WBTCOptions.exercise(id, {from: user2}).then(
-      () => assert.fail("Exercising a call option should be canceled"),
+      () => assert.fail("Exercising a put option should be canceled"),
       (x) => {
         assert.equal(x.reason, "Wrong msg.sender", "Wrong error reason")
       }
@@ -178,7 +189,7 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     const {id} = await createOption({period})
     const test = () =>
       WBTCOptions.unlock(id).then(
-        () => assert.fail("Exercising a call option should be canceled"),
+        () => assert.fail("Exercising a put option should be canceled"),
         (x) => {
           assert.equal(
             x.reason,
@@ -198,7 +209,7 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     const {id} = await createOption({period, user: user2})
     await timeTravel(period * 24 * 3600 + 1)
     await WBTCOptions.exercise(id, {from: user2}).then(
-      () => assert.fail("Exercising a call option should be canceled"),
+      () => assert.fail("Exercising a put option should be canceled"),
       (x) => {
         assert.equal(x.reason, "Option has expired", "Wrong error reason")
       }
@@ -211,7 +222,7 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     await WBTCOptions.exercise(id, {from: user2})
     await timeTravel(24 * 3600 + 1)
     await WBTCOptions.unlock(id).then(
-      () => assert.fail("Exercising a call option should be canceled"),
+      () => assert.fail("Exercising a put option should be canceled"),
       (x) => {
         assert.equal(x.reason, "Option is not active", "Wrong error reason")
       }
@@ -241,31 +252,28 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     }
   })
 
-  it("Should lock amount correctly", async () => {
+  it("Should lock funds correctly", async () => {
     const {WBTCPool, WBTCOptions} = await contracts
     const startLockedAmount = await WBTCPool.lockedAmount()
-    const amount = Math.random().toFixed(18)
-    const {id} = await createOption({amount: toBTC(amount)})
-    const optionCollateralizationRatio =
-        toBN(await WBTCOptions.optionCollateralizationRatio())
+    const amount = toBN(toBTC(Math.random().toFixed(18)))
+    // const strike = toBN(11000e8)
+    const {id} = await createOption({amount})
     const endLockedAmount = await WBTCPool.lockedAmount()
+    // TODO: expected
     const expected = toBN(await WBTCOptions.options(id).then(x=>x.lockedAmount))
     const actual = endLockedAmount.sub(startLockedAmount)
-    assert.equal(
-      expected.toString(),
-      actual.toString(),
-      "was locked incorrect amount"
-    )
+    assert(expected.eq(actual), "was locked incorrect amount")
   })
 
-  it("should unlock funds after an option is exercised", async () => {
+  it("Should unlock funds after an option is exercised", async () => {
     const {WBTCOptions, WBTCPool} = await contracts
-    const amount = Math.random().toFixed(18)
-    const strike = toBN(200e8)
-    const {id} = await createOption({amount: toBTC(amount), strike})
+    const amount = toBN(toBTC(Math.random().toFixed(18)))
+    // const strike = toBN(11000e8)
+    const {id} = await createOption({amount})
     const startLockedAmount = await WBTCPool.lockedAmount()
     await WBTCOptions.exercise(id)
     const endLockedAmount = await WBTCPool.lockedAmount()
+    // TODO: expected
     const expected = toBN(await WBTCOptions.options(id).then(x=>x.lockedAmount))
     const actual = startLockedAmount.sub(endLockedAmount)
     assert.equal(
@@ -278,9 +286,9 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
   it("Shouldn't change pool's total amount when creates an option", async () => {
     const {WBTCPool} = await contracts
     const startTotalBalance = await WBTCPool.totalBalance()
-    const amount = Math.random().toFixed(18)
-    const strike = toBN(200e8)
-    const {id} = await createOption({amount: toBTC(amount), strike})
+    const amount = toBN(toBTC(Math.random().toFixed(18)))
+    const strike = toBN(11000e8)
+    const {id} = await createOption({amount, strike})
     const endTotalBalance = await WBTCPool.totalBalance()
 
     assert(
@@ -294,9 +302,9 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
     const startShares = await Promise.all(
       [user1, user2, user3].map((user) => WBTCPool.shareOf(user))
     ).then((x) => x.toString())
-    const amount = Math.random().toFixed(18)
-    const strike = toBN(200e8)
-    const {id} = await createOption({amount: toBTC(amount), strike})
+    const amount = toBN(toBTC(Math.random().toFixed(18)))
+    const strike = toBN(11000e8)
+    const {id} = await createOption({amount, strike})
     const endTotalBalance = await WBTCPool.totalBalance()
     const endShares = await Promise.all(
       [user1, user2, user3].map((user) => WBTCPool.shareOf(user))
@@ -307,10 +315,10 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
   it("Should unfreeze LP's profit correctly after an option is unlocked", async () => {
     const {WBTCPool, WBTCOptions} = await contracts
     const startTotalBalance = await WBTCPool.totalBalance()
-    const amount = Math.random().toFixed(18)
-    const strike = toBN(200e8)
-    const {id} = await createOption({amount: toBTC(amount), strike})
-    // const {premium} = awanew Bit WBTCOptions.options(id)
+    const amount = toBN(toBTC(Math.random().toFixed(18)))
+    const strike = toBN(11000e8)
+    const {id} = await createOption({amount, strike})
+    // const {premium} = await WBTCOptions.options(id)
     timeTravel(24 * 3600 + 1)
     const {premium} = await WBTCOptions.unlock(id)
       .then((x) => x.logs.find((x) => x.event == "Expire"))
@@ -330,10 +338,10 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
   })
 
   for (const testPoint of priceTestPoints)
-    it(`Should pay profit for exercised ITM (90%) option correctly (price: ${testPoint}%)`, () =>
+    it(`Should pay profit for exercised ITM (110%) option correctly (price: ${testPoint}%)`, () =>
       testOption({
         createPrice: toBN(200e8),
-        strike: toBN(200e8).mul(toBN(9)).div(toBN(10)),
+        strike: toBN(200e8).mul(toBN(11)).div(toBN(10)),
         exercisePrice: toBN(200e8).mul(toBN(testPoint)).div(toBN(100)),
       }))
 
@@ -345,18 +353,18 @@ module.exports.test = () => contract("RisqWBTCOptions(call)", ([user1, user2, us
       }))
 
   for (const testPoint of priceTestPoints)
-    it(`Should pay profit for exercised OTM (110%) option correctly (price: ${testPoint}%)`, () =>
+    it(`Should pay profit for exercised OTM (90%) option correctly (price: ${testPoint}%)`, () =>
       testOption({
         createPrice: toBN(200e8),
-        strike: toBN(200e8).mul(toBN(11)).div(toBN(10)),
+        strike: toBN(200e8).mul(toBN(9)).div(toBN(10)),
         exercisePrice: toBN(200e8).mul(toBN(testPoint)).div(toBN(100)),
       }))
 
-  it("Shouldn't pay profit for exercised option when price is reduced", () =>
+  it("Shouldn't pay profit for exercised option when price is increased", () =>
     testOption({
-      createPrice: toBN(200e8),
-      exercisePrice: toBN(200e8 - 1),
-    }))
+    createPrice: toBN(200e8),
+    exercisePrice: toBN(200e8 + 1),
+  }))
 
   for (const testPoint of [190, 195, 200, 205, 210])
     it(`Show price for $${testPoint} strike`, () =>

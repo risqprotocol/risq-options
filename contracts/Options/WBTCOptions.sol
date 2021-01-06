@@ -19,37 +19,54 @@ pragma solidity 0.6.12;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import "../Pool/RisqETHPool.sol";
+import "../Pool/WBTCPool.sol";
 
 
 /**
- * @author 0mllwntrmt3
- * @title Risq ETH (Ether) Bidirectional (Call and Put) Options
- * @notice Risq ETH Options Contract
+ * @author macemclain
+ * @title Risq WBTC (Wrapped Bitcoin) Bidirectional (Call and Put) Options
+ * @notice Risq Protocol Options Contract
  */
-contract RisqETHOptions is Ownable, IRisqOptions {
+contract WBTCOptions is Ownable, IOptions {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
-    IRisqStakingETH public settlementFeeRecipient;
+    IStakingWBTC public settlementFeeRecipient;
     Option[] public override options;
     uint256 public impliedVolRate;
     uint256 public optionCollateralizationRatio = 100;
     uint256 internal constant PRICE_DECIMALS = 1e8;
     uint256 internal contractCreationTimestamp;
-    bool internal migrationProcess = true;
-    RisqETHOptions private oldRisqETHOptions;
     AggregatorV3Interface public priceProvider;
-    RisqETHPool public pool;
+    WBTCPool public pool;
+    IUniswapV2Router01 public uniswapRouter;
+    address[] public ethToWbtcSwapPath;
+    IERC20 public wbtc;
 
     /**
-     * @param pp The address of ChainLink ETH/USD price feed contract
+     * @param _priceProvider The address of ChainLink BTC/USD price feed contract
+     * @param _uniswap The address of Uniswap router contract
+     * @param token The address of WBTC ERC20 token contract
      */
-    constructor(AggregatorV3Interface pp, IRisqStakingETH staking, RisqETHPool _pool) public {
-        pool = _pool;
-        priceProvider = pp;
-        settlementFeeRecipient = staking;
-        impliedVolRate = 4500;
+    constructor(
+        AggregatorV3Interface _priceProvider,
+        IUniswapV2Router01 _uniswap,
+        ERC20 token,
+        IStakingWBTC _settlementFeeRecipient
+    ) public {
+        pool = new WBTCPool(token);
+        wbtc = token;
+        priceProvider = _priceProvider;
+        settlementFeeRecipient = _settlementFeeRecipient;
+        impliedVolRate = 5500;
+        uniswapRouter = _uniswap;
         contractCreationTimestamp = block.timestamp;
+        approve();
+
+        ethToWbtcSwapPath = new address[](2);
+        ethToWbtcSwapPath[0] = uniswapRouter.WETH();
+        ethToWbtcSwapPath[1] = address(wbtc);
+
     }
 
     /**
@@ -74,7 +91,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
      * @notice Used for changing settlementFeeRecipient
      * @param recipient New settlementFee recipient address
      */
-    function setSettlementFeeRecipient(IRisqStakingETH recipient) external onlyOwner {
+    function setSettlementFeeRecipient(IStakingWBTC recipient) external onlyOwner {
         require(block.timestamp < contractCreationTimestamp + 14 days);
         require(address(recipient) != address(0));
         settlementFeeRecipient = recipient;
@@ -107,39 +124,40 @@ contract RisqETHOptions is Ownable, IRisqOptions {
         payable
         returns (uint256 optionID)
     {
-        (uint256 total, uint256 settlementFee, uint256 strikeFee, ) = fees(
-            period,
-            amount,
-            strike,
-            optionType
-        );
-
+        (uint256 total, uint256 totalETH, uint256 settlementFee, uint256 strikeFee, ) =
+            fees(period, amount, strike, optionType);
         require(
             optionType == OptionType.Call || optionType == OptionType.Put,
             "Wrong option type"
         );
         require(period >= 1 days, "Period is too short");
         require(period <= 4 weeks, "Period is too long");
-        require(amount > strikeFee, "Price difference is too large");
-        require(msg.value >= total, "Wrong value");
-        if (msg.value > total) msg.sender.transfer(msg.value - total);
+        require(amount > strikeFee, "price difference is too large");
 
         uint256 strikeAmount = amount.sub(strikeFee);
+        uint premium = total.sub(settlementFee);
         optionID = options.length;
+
         Option memory option = Option(
             State.Active,
             msg.sender,
             strike,
             amount,
             strikeAmount.mul(optionCollateralizationRatio).div(100).add(strikeFee),
-            total.sub(settlementFee),
+            premium,
             block.timestamp + period,
             optionType
         );
 
+        uint amountIn = swapToWBTC(totalETH, total);
+        if (amountIn < msg.value) {
+            msg.sender.transfer(msg.value.sub(amountIn));
+        }
+
         options.push(option);
-        settlementFeeRecipient.sendProfit {value: settlementFee}();
-        pool.lock {value: option.premium} (optionID, option.lockedAmount);
+        settlementFeeRecipient.sendProfit(settlementFee);
+        pool.lock(optionID, option.lockedAmount, option.premium);
+
         emit Create(optionID, msg.sender, settlementFee, total);
     }
 
@@ -154,7 +172,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
         require(newHolder != address(0), "new holder address is zero");
         require(option.expiration >= block.timestamp, "Option has expired");
         require(option.holder == msg.sender, "Wrong msg.sender");
-        require(option.state == State.Active, "Only active options could be transferred");
+        require(option.state == State.Active, "Only active option could be transferred");
 
         option.holder = newHolder;
     }
@@ -187,44 +205,12 @@ contract RisqETHOptions is Ownable, IRisqOptions {
         }
     }
 
-    function migrate(uint count) external onlyOwner {
-        require(migrationProcess, "Migration Process was ended");
-        require(
-            pool.owner() != address(this),
-            "Liquidity Pool already attached"
-        );
-        require(address(oldRisqETHOptions) != address(0));
-        for (uint i = 0; i < count; i++){
-            uint optionID = options.length;
-            RisqETHOptions.Option memory option;
-            (
-                option.state,
-                option.holder,
-                option.strike,
-                option.amount,
-                option.lockedAmount,
-                option.premium,
-                option.expiration,
-                option.optionType
-            ) = oldRisqETHOptions.options(optionID);
-            uint settlementFee = getSettlementFee(option.amount);
-            options.push(option);
-            emit Create(
-                optionID,
-                option.holder,
-                settlementFee,
-                option.premium.add(settlementFee)
-            );
-        }
-    }
-
-    function setOldRisqETHOptions(address oldAddr) external onlyOwner {
-        require(address(oldRisqETHOptions) == address(0));
-        oldRisqETHOptions = RisqETHOptions(oldAddr);
-    }
-
-    function stopMigrationProcess() external onlyOwner {
-        migrationProcess = false;
+    /**
+     * @notice Allows the ERC pool contract to receive and send tokens
+     */
+    function approve() public {
+        wbtc.safeApprove(address(pool), uint(-1));
+        wbtc.safeApprove(address(settlementFeeRecipient), uint(-1));
     }
 
     /**
@@ -233,6 +219,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
      * @param amount Option amount
      * @param strike Strike price of the option
      * @return total Total price to be paid
+     * @return totalETH Total price in ETH to be paid
      * @return settlementFee Amount to be distributed to the RISQ token holders
      * @return strikeFee Amount that covers the price difference in the ITM options
      * @return periodFee Option period fee amount
@@ -247,17 +234,19 @@ contract RisqETHOptions is Ownable, IRisqOptions {
         view
         returns (
             uint256 total,
+            uint256 totalETH,
             uint256 settlementFee,
             uint256 strikeFee,
             uint256 periodFee
         )
     {
-        (,int latestPrice,,,) = priceProvider.latestRoundData();
+        (, int latestPrice, , , ) = priceProvider.latestRoundData();
         uint256 currentPrice = uint256(latestPrice);
         settlementFee = getSettlementFee(amount);
         periodFee = getPeriodFee(amount, period, strike, currentPrice, optionType);
         strikeFee = getStrikeFee(amount, strike, currentPrice, optionType);
         total = periodFee.add(strikeFee).add(settlementFee);
+        totalETH = uniswapRouter.getAmountsIn(total, ethToWbtcSwapPath)[0];
     }
 
     /**
@@ -291,7 +280,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
      * @param amount Option amount
      * @param period Option period in seconds (1 days <= period <= 4 weeks)
      * @param strike Strike price of the option
-     * @param currentPrice Current price of ETH
+     * @param currentPrice Current price of BTC
      * @return fee Period fee amount
      *
      * amount < 1e30        |
@@ -328,7 +317,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
      * @notice Calculates strikeFee
      * @param amount Option amount
      * @param strike Strike price of the option
-     * @param currentPrice Current price of ETH
+     * @param currentPrice Current price of BTC
      * @return fee Strike fee amount
      */
     function getStrikeFee(
@@ -345,7 +334,7 @@ contract RisqETHOptions is Ownable, IRisqOptions {
     }
 
     /**
-     * @notice Sends profits in ETH from the ETH pool to an option holder's address
+     * @notice Sends profits in WBTC from the WBTC pool to an option holder's address
      * @param optionID A specific option contract id
      */
     function payProfit(uint optionID)
@@ -367,7 +356,28 @@ contract RisqETHOptions is Ownable, IRisqOptions {
         pool.send(optionID, option.holder, profit);
     }
 
-
+    /**
+     * @notice Swap ETH to WBTC via Uniswap router
+     * @param maxAmountIn The maximum amount of ETH that can be required before the transaction reverts.
+     * @param amountOut The amount of WBTC tokens to receive.
+     */
+    function swapToWBTC(
+        uint maxAmountIn,
+        uint amountOut
+    )
+        internal
+        returns (uint)
+    {
+            uint[] memory amounts = uniswapRouter.swapETHForExactTokens {
+                value: maxAmountIn
+            }(
+                amountOut,
+                ethToWbtcSwapPath,
+                address(this),
+                block.timestamp
+            );
+            return amounts[0];
+    }
 
     /**
      * @return result Square root of the number

@@ -23,12 +23,12 @@ import "../Interfaces/Interfaces.sol";
 
 
 /**
- * @author 0mllwntrmt3
+ * @author macemclain
  * @title Risq WBTC Liquidity Pool
  * @notice Accumulates liquidity in WBTC from LPs and distributes P&L in WBTC
  */
-contract RisqERCPool is
-    IERCLiquidityPool,
+contract WBTCPool is
+    IWBTCLiquidityPool,
     Ownable,
     ERC20("Risq WBTC LP Token", "writeWBTC")
 {

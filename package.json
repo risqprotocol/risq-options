@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "DEVMOD=true truffle console",
-    "ganache": "ganache-cli -e 10000000 -m \"slight banner rotate below indoor engage dilemma champion tooth feature grit item\"",
+    "ganache": "ganache-cli -e 10000000 -m \"potato boring despair all hybrid recipe crack extend tunnel chimney behind canoe\"",
     "test": "truffle test",
     "coverage": "truffle run coverage",
     "lint": "prettier './**/*.js' './**/*.sol' './**/*.md' --write",

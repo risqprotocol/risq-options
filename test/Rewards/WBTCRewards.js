@@ -2,7 +2,7 @@ const {getContracts, toWei, timeTravel, OptionType} = require("../utils/utils.js
 const toBN = web3.utils.toBN
 const toBTC = x=> toBN(toWei(x)).div(toBN(1e10))
 
-module.exports.test = () => contract("RisqWBTCRewards", ([user1, user2, user3, user4]) => {
+module.exports.test = () => contract("WBTCRewards", ([user1, user2, user3, user4]) => {
     const contracts = getContracts()
 
 

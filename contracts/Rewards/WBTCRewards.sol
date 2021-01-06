@@ -19,15 +19,15 @@ pragma solidity 0.6.12;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import "./RisqRewards.sol";
+import "./Rewards.sol";
 
 
-contract RisqWBTCRewards is RisqRewards {
+contract WBTCRewards is Rewards {
     constructor(
-        IRisqOptions _risqOptions,
+        IOptions _options,
         IERC20 _risq
-    ) public RisqRewards(
-        _risqOptions,
+    ) public Rewards(
+        _options,
         _risq,
         1_000_000e18,
         10e8,

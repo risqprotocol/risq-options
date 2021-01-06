@@ -1,12 +1,12 @@
 const HDWalletProvider = require("@truffle/hdwallet-provider")
-const infuraKey = "066e579a2b4d4d3a8e5e72dbe19e5beb"
+const infuraKey = "1c4ca8327cab46e5b9e513b7819a98f8"
 const pk = [process.env.PK]
 
 module.exports = {
   networks: {
     development: {
       host: "127.0.0.1", // Localhost (default: none)
-      port: 7545, // Standard Ethereum port (default: none)
+      port: 8020, // Standard Ethereum port (default: none)
       network_id: "*", // Any network (default: none)
     },
     develop: {

@@ -1,7 +1,7 @@
 const {getContracts, toWei, timeTravel, OptionType} = require("../utils/utils.js")
 const toBN = web3.utils.toBN
 
-module.exports.test = () => contract("RisqETHRewards", ([user1, user2, user3, user4]) => {
+module.exports.test = () => contract("ETHRewards", ([user1, user2, user3, user4]) => {
     const contracts = getContracts()
 
 

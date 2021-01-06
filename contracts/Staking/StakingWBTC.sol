@@ -17,27 +17,33 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import "./RisqStaking.sol";
+import "./Staking.sol";
 pragma solidity 0.6.12;
 
 
-contract RisqStakingETH is RisqStaking, IRisqStakingETH {
+contract StakingWBTC is Staking, IStakingWBTC {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
 
-    constructor(ERC20 _token) public
-        RisqStaking(_token, "RISQ ETH Staking lot", "rlETH") {}
+    IERC20 public immutable WBTC;
 
-    function sendProfit() external payable override {
+    constructor(ERC20 _token, ERC20 wbtc) public
+        Staking(_token, "RISQ WBTC Staking lot", "rlWBTC") {
+        WBTC = wbtc;
+    }
+
+    function sendProfit(uint amount) external override {
         uint _totalSupply = totalSupply();
         if (_totalSupply > 0) {
-            totalProfit += msg.value.mul(ACCURACY) / _totalSupply;
-            emit Profit(msg.value);
+            totalProfit += amount.mul(ACCURACY) / _totalSupply;
+            WBTC.safeTransferFrom(msg.sender, address(this), amount);
+            emit Profit(amount);
         } else {
-            FALLBACK_RECIPIENT.transfer(msg.value);
+            WBTC.safeTransferFrom(msg.sender, FALLBACK_RECIPIENT, amount);
         }
     }
 
     function _transferProfit(uint amount) internal override {
-        msg.sender.transfer(amount);
+        WBTC.safeTransfer(msg.sender, amount);
     }
 }

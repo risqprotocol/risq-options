@@ -13,7 +13,7 @@ const thirdProvide = new BN(toWei(Math.random()))
 const firstWithdraw = firstProvide
 const profit = new BN(toWei(Math.random())).div(new BN(1000))
 
-module.exports.test = () => contract("RisqERCPool", ([user1, user2, user3]) => {
+module.exports.test = () => contract("WBTCPool", ([user1, user2, user3]) => {
   const contracts = getContracts()
 
   it("Should mint tokens for the first provider correctly", async () => {

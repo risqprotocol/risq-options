@@ -1,17 +1,17 @@
 // const PUTContract = artifacts.require("RisqPutOptions")
 // const CALLContract = artifacts.require("RisqCallOptions")
-const ERCPoolContract = artifacts.require("RisqERCPool")
-const ETHPoolContract = artifacts.require("RisqETHPool")
+const WBTCPoolContract = artifacts.require("WBTCPool")
+const ETHPoolContract = artifacts.require("ETHPool")
 const WBTCContract = artifacts.require("FakeWBTC")
 const RISQContract = artifacts.require("FakeRISQ")
 const PriceContract = artifacts.require("FakePriceProvider")
 const BTCPriceContract = artifacts.require("FakeBTCPriceProvider")
-const ETHOptionsContract = artifacts.require("RisqETHOptions")
-const WBTCOptionsContract = artifacts.require("RisqWBTCOptions")
-const RisqRewadsETHContract = artifacts.require("RisqETHRewards")
-const RisqRewadsWBTCContract = artifacts.require("RisqWBTCRewards")
-const RisqStakingETHContract = artifacts.require("RisqStakingETH")
-const RisqStakingWBTCContract = artifacts.require("RisqStakingWBTC")
+const ETHOptionsContract = artifacts.require("ETHOptions")
+const WBTCOptionsContract = artifacts.require("WBTCOptions")
+const RewadsETHContract = artifacts.require("ETHRewards")
+const RewadsWBTCContract = artifacts.require("WBTCRewards")
+const StakingETHContract = artifacts.require("StakingETH")
+const StakingWBTCContract = artifacts.require("StakingWBTC")
 const RisqBCContract = artifacts.require("LinearBondingCurve")
 const BN = web3.utils.BN
 
@@ -30,8 +30,8 @@ const getContracts = async () => {
       BTCPriceProvider, WBTC, RISQ,
       TestETHPool, StakingETH, StakingWBTC
   ] = await Promise.all([
-        RisqRewadsETHContract.deployed(),
-        RisqRewadsWBTCContract.deployed(),
+        RewadsETHContract.deployed(),
+        RewadsWBTCContract.deployed(),
         ETHOptionsContract.deployed(),
         WBTCOptionsContract.deployed(),
         PriceContract.deployed(),
@@ -39,12 +39,12 @@ const getContracts = async () => {
         WBTCContract.deployed(),
         RISQContract.deployed(),
         ETHPoolContract.deployed(),
-        RisqStakingETHContract.deployed(),
-        RisqStakingWBTCContract.deployed(),
+        StakingETHContract.deployed(),
+        StakingWBTCContract.deployed(),
       ])
   const [ETHPool, WBTCPool] = await Promise.all([
     ETHOptions.pool.call().then((address) => ETHPoolContract.at(address)),
-    WBTCOptions.pool.call().then((address) => ERCPoolContract.at(address)),
+    WBTCOptions.pool.call().then((address) => WBTCPoolContract.at(address)),
   ])
   return {
       ETHRewards, WBTCRewards,

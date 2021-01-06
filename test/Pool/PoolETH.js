@@ -13,7 +13,7 @@ const thirdProvide = new BN(toWei(Math.random()))
 const firstWithdraw = firstProvide
 const profit = new BN(toWei(Math.random())).div(new BN(1000));
 
-module.exports.test = () => contract("RisqETHPool", ([user1, user2, user3]) => {
+module.exports.test = () => contract("ETHPool", ([user1, user2, user3]) => {
   const contracts = getContracts()
 
   it("Should transfer ownership", async () => {

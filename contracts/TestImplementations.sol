@@ -20,7 +20,7 @@ pragma solidity 0.6.12;
  */
 import "./Interfaces/Interfaces.sol";
 import "./Rewards/Synthetix/StakingRewards.sol";
-import "./Options/RisqETHOptions.sol";
+import "./Options/ETHOptions.sol";
 
 contract FakeExchange {
     uint256 public exchangeRate;
@@ -115,7 +115,7 @@ contract FakeWBTC is ERC20("FakeWBTC", "FAKE") {
 }
 
 
-contract FakeRISQ is ERC20("FakeRISQ", "FAKEH") {
+contract FakeRISQ is ERC20("FakeRISQ", "FAKER") {
     function mintTo(address account, uint256 amount) public {
         _mint(account, amount);
     }
@@ -146,9 +146,9 @@ contract WBTCStakingRewards is StakingRewards {
 }
 
 
-contract BrokenETHOptions is RisqETHOptions {
-    constructor(AggregatorV3Interface pp, IRisqStakingETH staking)
-        public RisqETHOptions(pp, staking, new RisqETHPool())
+contract BrokenETHOptions is ETHOptions {
+    constructor(AggregatorV3Interface pp, IStakingETH staking)
+        public ETHOptions(pp, staking, new ETHPool())
     {
 
     }
