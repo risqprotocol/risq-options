@@ -24,12 +24,12 @@ pragma solidity 0.6.12;
 
 
 abstract
-contract Staking is ERC20, IStaking {
+contract RisqStaking is ERC20, IRisqStaking {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
     IERC20 public immutable RISQ;
-    uint public constant MAX_SUPPLY = 1500;
+    uint public constant MAX_SUPPLY = 500;
     uint public constant LOT_PRICE = 10_000e18;
     uint internal constant ACCURACY = 1e30;
     address payable public immutable FALLBACK_RECIPIENT;

@@ -23,15 +23,15 @@ import "../Interfaces/Interfaces.sol";
 
 
 abstract
-contract Rewards is Ownable {
+contract RisqRewards is Ownable {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
-    IOptions public immutable options;
+    IRisqOptions public immutable risqOptions;
     IERC20 public immutable risq;
     mapping(uint => bool) public rewardedOptions;
     mapping(uint => uint) public dailyReward;
-    uint internal constant MAX_DAILY_REWARD = 16_500e18;
+    uint internal constant MAX_DAILY_REWARD = 1_000e18;
     uint internal constant REWARD_RATE_ACCURACY = 1e8;
     uint internal immutable MAX_REWARDS_RATE;
     uint internal immutable MIN_REWARDS_RATE;
@@ -39,13 +39,13 @@ contract Rewards is Ownable {
     uint public rewardsRate;
 
     constructor(
-        IOptions _options,
+        IRisqOptions _risqOptions,
         IERC20 _risq,
         uint maxRewardsRate,
         uint minRewardsRate,
         uint firstOptionID
     ) public {
-        options = _options;
+        risqOptions = _risqOptions;
         risq = _risq;
         MAX_REWARDS_RATE = maxRewardsRate;
         MIN_REWARDS_RATE = minRewardsRate;
@@ -58,10 +58,10 @@ contract Rewards is Ownable {
         uint today = block.timestamp / 1 days;
         dailyReward[today] = dailyReward[today].add(amount);
 
-        (IOptions.State state, address holder, , , , , , ) =
-            options.options(optionId);
+        (IRisqOptions.State state, address holder, , , , , , ) =
+            risqOptions.options(optionId);
         require(optionId >= FIRST_OPTION_ID, "Wrong Option ID");
-        require(state != IOptions.State.Inactive, "The option is inactive");
+        require(state != IRisqOptions.State.Inactive, "The option is inactive");
         require(!rewardedOptions[optionId], "The option was rewarded");
         require(
             dailyReward[today] < MAX_DAILY_REWARD,
@@ -77,7 +77,7 @@ contract Rewards is Ownable {
     }
 
     function rewardAmount(uint optionId) internal view returns (uint) {
-        (, , , uint _amount, , uint _premium, , ) = options.options(optionId);
+        (, , , uint _amount, , uint _premium, , ) = risqOptions.options(optionId);
         return _amount.div(100).add(_premium)
             .mul(rewardsRate)
             .div(REWARD_RATE_ACCURACY);

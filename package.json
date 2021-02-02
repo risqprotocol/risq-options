@@ -1,7 +1,7 @@
 {
   "name": "options-contracts",
   "version": "1.0.0",
-  "description": "",
+  "description": "Defi Options for Risq Protocol",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"

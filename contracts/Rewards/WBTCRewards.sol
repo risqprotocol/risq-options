@@ -22,14 +22,14 @@ pragma solidity 0.6.12;
 import "./Rewards.sol";
 
 
-contract WBTCRewards is Rewards {
+contract RisqWBTCRewards is RisqRewards {
     constructor(
-        IOptions _options,
+        IRisqOptions _risqOptions,
         IERC20 _risq
-    ) public Rewards(
-        _options,
+    ) public RisqRewards(
+        _risqOptions,
         _risq,
-        1_000_000e18,
+        100_000e18,
         10e8,
         54
     ) {}

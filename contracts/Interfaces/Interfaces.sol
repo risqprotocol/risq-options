@@ -42,7 +42,7 @@ interface ILiquidityPool {
 }
 
 
-interface IWBTCLiquidityPool is ILiquidityPool {
+interface IERCLiquidityPool is ILiquidityPool {
     function lock(uint id, uint256 amount, uint premium) external;
     function token() external view returns (IERC20);
 }
@@ -53,7 +53,7 @@ interface IETHLiquidityPool is ILiquidityPool {
 }
 
 
-interface IStaking {    
+interface IRisqStaking {    
     event Claim(address indexed acount, uint amount);
     event Profit(uint amount);
 
@@ -65,17 +65,17 @@ interface IStaking {
 }
 
 
-interface IStakingETH is IStaking {
+interface IRisqStakingETH is IRisqStaking {
     function sendProfit() external payable;
 }
 
 
-interface IStakingWBTC is IStaking {
+interface IRisqStakingERC20 is IRisqStaking {
     function sendProfit(uint amount) external;
 }
 
 
-interface IOptions {
+interface IRisqOptions {
     event Create(
         uint256 indexed id,
         address indexed account,

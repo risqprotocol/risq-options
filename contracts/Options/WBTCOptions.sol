@@ -27,18 +27,18 @@ import "../Pool/WBTCPool.sol";
  * @title Risq WBTC (Wrapped Bitcoin) Bidirectional (Call and Put) Options
  * @notice Risq Protocol Options Contract
  */
-contract WBTCOptions is Ownable, IOptions {
+contract RisqWBTCOptions is Ownable, IRisqOptions {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IStakingWBTC public settlementFeeRecipient;
+    IRisqStakingERC20 public settlementFeeRecipient;
     Option[] public override options;
     uint256 public impliedVolRate;
     uint256 public optionCollateralizationRatio = 100;
     uint256 internal constant PRICE_DECIMALS = 1e8;
     uint256 internal contractCreationTimestamp;
     AggregatorV3Interface public priceProvider;
-    WBTCPool public pool;
+    RisqERCPool public pool;
     IUniswapV2Router01 public uniswapRouter;
     address[] public ethToWbtcSwapPath;
     IERC20 public wbtc;
@@ -52,13 +52,13 @@ contract WBTCOptions is Ownable, IOptions {
         AggregatorV3Interface _priceProvider,
         IUniswapV2Router01 _uniswap,
         ERC20 token,
-        IStakingWBTC _settlementFeeRecipient
+        IRisqStakingERC20 _settlementFeeRecipient
     ) public {
-        pool = new WBTCPool(token);
+        pool = new RisqERCPool(token);
         wbtc = token;
         priceProvider = _priceProvider;
         settlementFeeRecipient = _settlementFeeRecipient;
-        impliedVolRate = 5500;
+        impliedVolRate = 4500;
         uniswapRouter = _uniswap;
         contractCreationTimestamp = block.timestamp;
         approve();
@@ -91,7 +91,7 @@ contract WBTCOptions is Ownable, IOptions {
      * @notice Used for changing settlementFeeRecipient
      * @param recipient New settlementFee recipient address
      */
-    function setSettlementFeeRecipient(IStakingWBTC recipient) external onlyOwner {
+    function setSettlementFeeRecipient(IRisqStakingERC20 recipient) external onlyOwner {
         require(block.timestamp < contractCreationTimestamp + 14 days);
         require(address(recipient) != address(0));
         settlementFeeRecipient = recipient;

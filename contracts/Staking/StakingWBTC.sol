@@ -21,14 +21,14 @@ import "./Staking.sol";
 pragma solidity 0.6.12;
 
 
-contract StakingWBTC is Staking, IStakingWBTC {
+contract RisqStakingWBTC is RisqStaking, IRisqStakingERC20 {
     using SafeERC20 for IERC20;
     using SafeMath for uint;
 
     IERC20 public immutable WBTC;
 
     constructor(ERC20 _token, ERC20 wbtc) public
-        Staking(_token, "RISQ WBTC Staking lot", "rlWBTC") {
+        RisqStaking(_token, "RISQ WBTC Staking lot", "rlWBTC") {
         WBTC = wbtc;
     }
 
