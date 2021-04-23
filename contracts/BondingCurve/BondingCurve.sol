@@ -23,10 +23,11 @@ pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 abstract
-contract BondingCurve {
+contract BondingCurve is Ownable {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
@@ -40,6 +41,7 @@ contract BondingCurve {
     constructor(IERC20 _token) public {
         token = _token;
         risqDevelopmentFund = msg.sender;
+        
     }
 
     function buy(uint tokenAmount) external payable {
@@ -65,6 +67,11 @@ contract BondingCurve {
         risqDevelopmentFund.transfer(comission);
         msg.sender.transfer(refund);
         emit Sold(msg.sender, tokenAmount, refund, comission);
+    }
+
+    // transfer balance to dev fund
+	function withdrawEther(uint256 amount) public onlyOwner {
+        msg.sender.transfer(amount);
     }
 
     function s(uint x0, uint x1) public view virtual returns (uint);
