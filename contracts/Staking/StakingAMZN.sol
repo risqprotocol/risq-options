@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: GPL-3.0-or-later
-// File: ../BSC/GSN/Context.sol
+// File: @openzeppelin/contracts/GSN/Context.sol
 
 
 pragma solidity ^0.6.0;
@@ -26,7 +26,7 @@ abstract contract Context {
     }
 }
 
-// File: ../BSC/token/BEP20/IBEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/IBEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -105,7 +105,7 @@ interface IBEP20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-// File: ../BSC/math/SafeMath.sol
+// File: @openzeppelin/contracts/math/SafeMath.sol
 
 
 pragma solidity ^0.6.0;
@@ -266,7 +266,7 @@ library SafeMath {
     }
 }
 
-// File: ../BSC/utils/Address.sol
+// File: @openzeppelin/contracts/utils/Address.sol
 
 
 pragma solidity ^0.6.2;
@@ -365,7 +365,7 @@ library Address {
      *
      * Requirements:
      *
-     * - the calling contract must have an BNB balance of at least `value`.
+     * - the calling contract must have an ETH balance of at least `value`.
      * - the called Solidity function must be `payable`.
      *
      * _Available since v3.1._
@@ -409,7 +409,7 @@ library Address {
     }
 }
 
-// File: ../BSC/token/BEP20/BEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/BEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -717,7 +717,7 @@ contract BEP20 is Context, IBEP20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
-// File: ../BSC/token/BEP20/SafeBEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/SafeBEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -793,7 +793,7 @@ library SafeBEP20 {
     }
 }
 
-// File: ../BSC/access/Ownable.sol
+// File: @openzeppelin/contracts/access/Ownable.sol
 
 
 pragma solidity ^0.6.0;
@@ -1038,13 +1038,13 @@ interface ILiquidityPool {
 }
 
 
-interface IBEPLiquidityPool is ILiquidityPool {
+interface IERCLiquidityPool is ILiquidityPool {
     function lock(uint id, uint256 amount, uint premium) external;
     function token() external view returns (IBEP20);
 }
 
 
-interface IBNBLiquidityPool is ILiquidityPool {
+interface IETHLiquidityPool is ILiquidityPool {
     function lock(uint id, uint256 amount) external payable;
 }
 
@@ -1061,7 +1061,7 @@ interface IRisqStaking {
 }
 
 
-interface IRisqStakingBNB is IRisqStaking {
+interface IRisqStakingETH is IRisqStaking {
     function sendProfit() external payable;
 }
 
@@ -1250,7 +1250,7 @@ contract RisqStaking is BEP20, IRisqStaking {
     }
 }
 
-// File: contracts/Staking/RisqStakingBNB.sol
+// File: contracts/Staking/RisqStakingAMZN.sol
 
 /**
  * Risq
@@ -1273,23 +1273,29 @@ contract RisqStaking is BEP20, IRisqStaking {
 pragma solidity 0.6.12;
 
 
-contract RisqStakingBNB is RisqStaking, IRisqStakingBNB {
+contract RisqStakingAMZN is RisqStaking, IRisqStakingBEP20 {
+    using SafeBEP20 for IBEP20;
     using SafeMath for uint;
 
-    constructor(BEP20 _token) public
-        RisqStaking(_token, "RISQ BNB Staking lot", "rBNB") {}
+    IBEP20 public immutable AMZN;
 
-    function sendProfit() external payable override {
+    constructor(BEP20 _token, BEP20 amzn) public
+        RisqStaking(_token, "RISQ AMZN Staking lot", "rAMZN") {
+        AMZN = amzn;
+    }
+
+    function sendProfit(uint amount) external override {
         uint _totalSupply = totalSupply();
         if (_totalSupply > 0) {
-            totalProfit += msg.value.mul(ACCURACY) / _totalSupply;
-            emit Profit(msg.value);
+            totalProfit += amount.mul(ACCURACY) / _totalSupply;
+            AMZN.safeTransferFrom(msg.sender, address(this), amount);
+            emit Profit(amount);
         } else {
-            FALLBACK_RECIPIENT.transfer(msg.value);
+            AMZN.safeTransferFrom(msg.sender, FALLBACK_RECIPIENT, amount);
         }
     }
 
     function _transferProfit(uint amount) internal override {
-        msg.sender.transfer(amount);
+        AMZN.safeTransfer(msg.sender, amount);
     }
 }

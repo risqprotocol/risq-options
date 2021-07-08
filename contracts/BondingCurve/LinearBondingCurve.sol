@@ -24,11 +24,11 @@ import "./BondingCurve.sol";
 
 contract LinearBondingCurve is BondingCurve {
     using SafeMath for uint;
-    using SafeERC20 for IERC20;
+    using SafeBEP20 for IBEP20;
     uint internal immutable K;
     uint internal immutable START_PRICE;
 
-    constructor(IERC20 _token, uint k, uint startPrice) public BondingCurve(_token) {
+    constructor(IBEP20 _token, uint k, uint startPrice) public BondingCurve(_token) {
         K = k;
         START_PRICE = startPrice;
     }

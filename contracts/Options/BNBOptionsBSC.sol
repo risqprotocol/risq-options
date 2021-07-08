@@ -1,7 +1,5 @@
-
+// File: @openzeppelin/contracts/GSN/Context.sol
 // SPDX-License-Identifier: GPL-3.0-or-later
-// File: ../BSC/GSN/Context.sol
-
 
 pragma solidity ^0.6.0;
 
@@ -26,7 +24,7 @@ abstract contract Context {
     }
 }
 
-// File: ../BSC/token/BEP20/IBEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/IBEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -105,7 +103,7 @@ interface IBEP20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-// File: ../BSC/math/SafeMath.sol
+// File: @openzeppelin/contracts/math/SafeMath.sol
 
 
 pragma solidity ^0.6.0;
@@ -266,7 +264,7 @@ library SafeMath {
     }
 }
 
-// File: ../BSC/utils/Address.sol
+// File: @openzeppelin/contracts/utils/Address.sol
 
 
 pragma solidity ^0.6.2;
@@ -409,7 +407,7 @@ library Address {
     }
 }
 
-// File: ../BSC/token/BEP20/BEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/BEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -717,7 +715,7 @@ contract BEP20 is Context, IBEP20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
-// File: ../BSC/token/BEP20/SafeBEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/SafeBEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -793,7 +791,7 @@ library SafeBEP20 {
     }
 }
 
-// File: ../BSC/access/Ownable.sol
+// File: @openzeppelin/contracts/access/Ownable.sol
 
 
 pragma solidity ^0.6.0;
@@ -896,11 +894,11 @@ interface AggregatorV3Interface {
     );
 }
 
-// File: pancakeswap-peripheral/contracts/interfaces/IPancakeRouter01.sol
+// File: @uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol
 
 pragma solidity >=0.6.2;
 
-interface IPancakeRouter01 {
+interface IUniswapV2Router01 {
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
 
@@ -1127,7 +1125,9 @@ interface IRisqOptions {
 //
 // }
 
-// File: contracts/Staking/RisqStaking.sol
+// File: contracts/Pool/BNBPoolBSC.sol
+
+pragma solidity 0.6.12;
 
 /**
  * Risq
@@ -1149,57 +1149,32 @@ interface IRisqOptions {
 
 
 
-pragma solidity 0.6.12;
-
-
-abstract
-contract RisqStaking is BEP20, IRisqStaking {
-    using SafeBEP20 for IBEP20;
-    using SafeMath for uint;
-
-    IBEP20 public immutable RISQ;
-    uint public constant MAX_SUPPLY = 500;
-    uint public constant LOT_PRICE = 10_000e18;
-    uint internal constant ACCURACY = 1e30;
-    address payable public immutable FALLBACK_RECIPIENT;
-
-    uint public totalProfit = 0;
-    mapping(address => uint) internal lastProfit;
-    mapping(address => uint) internal savedProfit;
-
-
-    uint256 public lockupPeriod = 1 days;
-    mapping(address => uint256) public lastBoughtTimestamp;
+/**
+ * @author macemclain
+ * @title Risq BNB Liquidity Pool
+ * @notice Accumulates liquidity in BNB from LPs and distributes P&L in BNB
+ */
+contract RisqBNBPool is
+    IBNBLiquidityPool,
+    Ownable,
+    BEP20("Risq BNB LP Token", "writeBNB")
+{
+    using SafeMath for uint256;
+    uint256 public constant INITIAL_RATE = 1e3;
+    uint256 public lockupPeriod = 2 weeks;
+    uint256 public lockedAmount;
+    uint256 public lockedPremium;
+    mapping(address => uint256) public lastProvideTimestamp;
     mapping(address => bool) public _revertTransfersInLockUpPeriod;
+    LockedLiquidity[] public lockedLiquidity;
 
-    constructor(BEP20 _token, string memory name, string memory short)
-        public
-        BEP20(name, short)
-    {
-        RISQ = _token;
-        _setupDecimals(0);
-        FALLBACK_RECIPIENT = msg.sender;
-    }
-
-    function claimProfit() external override returns (uint profit) {
-        profit = saveProfit(msg.sender);
-        require(profit > 0, "Zero profit");
-        savedProfit[msg.sender] = 0;
-        _transferProfit(profit);
-        emit Claim(msg.sender, profit);
-    }
-
-    function buy(uint amount) external override {
-        lastBoughtTimestamp[msg.sender] = block.timestamp;
-        require(amount > 0, "Amount is zero");
-        require(totalSupply() + amount <= MAX_SUPPLY);
-        _mint(msg.sender, amount);
-        RISQ.safeTransferFrom(msg.sender, address(this), amount.mul(LOT_PRICE));
-    }
-
-    function sell(uint amount) external override lockupFree {
-        _burn(msg.sender, amount);
-        RISQ.safeTransfer(msg.sender, amount.mul(LOT_PRICE));
+    /**
+     * @notice Used for changing the lockup period
+     * @param value New period value
+     */
+    function setLockupPeriod(uint256 value) external override onlyOwner {
+        require(value <= 60 days, "Lockup period is too large");
+        lockupPeriod = value;
     }
 
     /**
@@ -1209,48 +1184,166 @@ contract RisqStaking is BEP20, IRisqStaking {
         _revertTransfersInLockUpPeriod[msg.sender] = value;
     }
 
-    function profitOf(address account) external view override returns (uint) {
-        return savedProfit[account].add(getUnsaved(account));
+    /*
+     * @nonce A provider supplies BNB to the pool and receives writeBNB tokens
+     * @param minMint Minimum amount of tokens that should be received by a provider.
+                      Calling the provide function will require the minimum amount of tokens to be minted.
+                      The actual amount that will be minted could vary but can only be higher (not lower) than the minimum value.
+     * @return mint Amount of tokens to be received
+     */
+    function provide(uint256 minMint) external payable returns (uint256 mint) {
+        lastProvideTimestamp[msg.sender] = block.timestamp;
+        uint supply = totalSupply();
+        uint balance = totalBalance();
+        if (supply > 0 && balance > 0)
+            mint = msg.value.mul(supply).div(balance.sub(msg.value));
+        else
+            mint = msg.value.mul(INITIAL_RATE);
+
+        require(mint >= minMint, "Pool: Mint limit is too large");
+        require(mint > 0, "Pool: Amount is too small");
+
+        _mint(msg.sender, mint);
+        emit Provide(msg.sender, msg.value, mint);
     }
 
-    function getUnsaved(address account) internal view returns (uint profit) {
-        return totalProfit.sub(lastProfit[account]).mul(balanceOf(account)).div(ACCURACY);
+    /*
+     * @nonce Provider burns writeBNB and receives BNB from the pool
+     * @param amount Amount of BNB to receive
+     * @return burn Amount of tokens to be burnt
+     */
+    function withdraw(uint256 amount, uint256 maxBurn) external returns (uint256 burn) {
+        require(
+            lastProvideTimestamp[msg.sender].add(lockupPeriod) <= block.timestamp,
+            "Pool: Withdrawal is locked up"
+        );
+        require(
+            amount <= availableBalance(),
+            "Pool Error: Not enough funds on the pool contract. Please lower the amount."
+        );
+
+        burn = divCeil(amount.mul(totalSupply()), totalBalance());
+
+        require(burn <= maxBurn, "Pool: Burn limit is too small");
+        require(burn <= balanceOf(msg.sender), "Pool: Amount is too large");
+        require(burn > 0, "Pool: Amount is too small");
+
+        _burn(msg.sender, burn);
+        emit Withdraw(msg.sender, amount, burn);
+        msg.sender.transfer(amount);
     }
 
-    function saveProfit(address account) internal returns (uint profit) {
-        uint unsaved = getUnsaved(account);
-        lastProfit[account] = totalProfit;
-        profit = savedProfit[account].add(unsaved);
-        savedProfit[account] = profit;
+    /*
+     * @nonce calls by RisqCallOptions to lock the funds
+     * @param amount Amount of funds that should be locked in an option
+     */
+    function lock(uint id, uint256 amount) external override onlyOwner payable {
+        require(id == lockedLiquidity.length, "Wrong id");
+        require(
+            lockedAmount.add(amount).mul(10) <= totalBalance().sub(msg.value).mul(8),
+            "Pool Error: Amount is too large."
+        );
+
+        lockedLiquidity.push(LockedLiquidity(amount, msg.value, true));
+        lockedPremium = lockedPremium.add(msg.value);
+        lockedAmount = lockedAmount.add(amount);
+    }
+
+    /*
+     * @nonce calls by RisqOptions to unlock the funds
+     * @param id Id of LockedLiquidity that should be unlocked
+     */
+    function unlock(uint256 id) external override onlyOwner {
+        LockedLiquidity storage ll = lockedLiquidity[id];
+        require(ll.locked, "LockedLiquidity with such id has already unlocked");
+        ll.locked = false;
+
+        lockedPremium = lockedPremium.sub(ll.premium);
+        lockedAmount = lockedAmount.sub(ll.amount);
+
+        emit Profit(id, ll.premium);
+    }
+
+    /*
+     * @nonce calls by RisqCallOptions to send funds to liquidity providers after an option's expiration
+     * @param to Provider
+     * @param amount Funds that should be sent
+     */
+    function send(uint id, address payable to, uint256 amount)
+        external
+        override
+        onlyOwner
+    {
+        LockedLiquidity storage ll = lockedLiquidity[id];
+        require(ll.locked, "LockedLiquidity with such id has already unlocked");
+        require(to != address(0));
+
+        ll.locked = false;
+        lockedPremium = lockedPremium.sub(ll.premium);
+        lockedAmount = lockedAmount.sub(ll.amount);
+
+        uint transferAmount = amount > ll.amount ? ll.amount : amount;
+        to.transfer(transferAmount);
+
+        if (transferAmount <= ll.premium)
+            emit Profit(id, ll.premium - transferAmount);
+        else
+            emit Loss(id, transferAmount - ll.premium);
+    }
+
+    /*
+     * @nonce Returns provider's share in BNB
+     * @param account Provider's address
+     * @return Provider's share in BNB
+     */
+    function shareOf(address account) external view returns (uint256 share) {
+        if (totalSupply() > 0)
+            share = totalBalance().mul(balanceOf(account)).div(totalSupply());
+        else
+            share = 0;
+    }
+
+    /*
+     * @nonce Returns the amount of BNB available for withdrawals
+     * @return balance Unlocked amount
+     */
+    function availableBalance() public view returns (uint256 balance) {
+        return totalBalance().sub(lockedAmount);
+    }
+
+    /*
+     * @nonce Returns the total balance of BNB provided to the pool
+     * @return balance Pool balance
+     */
+    function totalBalance() public override view returns (uint256 balance) {
+        return address(this).balance.sub(lockedPremium);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256) internal override {
-        if (from != address(0)) saveProfit(from);
-        if (to != address(0)) saveProfit(to);
         if (
-            lastBoughtTimestamp[from].add(lockupPeriod) > block.timestamp &&
-            lastBoughtTimestamp[from] > lastBoughtTimestamp[to]
+            lastProvideTimestamp[from].add(lockupPeriod) > block.timestamp &&
+            lastProvideTimestamp[from] > lastProvideTimestamp[to]
         ) {
             require(
                 !_revertTransfersInLockUpPeriod[to],
                 "the recipient does not accept blocked funds"
             );
-            lastBoughtTimestamp[to] = lastBoughtTimestamp[from];
+            lastProvideTimestamp[to] = lastProvideTimestamp[from];
         }
     }
 
-    function _transferProfit(uint amount) internal virtual;
-
-    modifier lockupFree {
-        require(
-            lastBoughtTimestamp[msg.sender].add(lockupPeriod) <= block.timestamp,
-            "Action suspended due to lockup"
-        );
-        _;
+    function divCeil(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b > 0);
+        uint256 c = a / b;
+        if (a % b != 0)
+            c = c + 1;
+        return c;
     }
 }
 
-// File: contracts/Staking/RisqStakingBNB.sol
+// File: contracts/Options/RisqBNBOptions.sol
+
+pragma solidity 0.6.12;
 
 /**
  * Risq
@@ -1270,26 +1363,314 @@ contract RisqStaking is BEP20, IRisqStaking {
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-pragma solidity 0.6.12;
 
 
-contract RisqStakingBNB is RisqStaking, IRisqStakingBNB {
-    using SafeMath for uint;
+/**
+ * @author macemclain
+ * @title Risq BNB (Binance) Bidirectional (Call and Put) Options
+ * @notice Risq BNB Options Contract
+ */
+contract BNBOptions is Ownable, IRisqOptions {
+    using SafeMath for uint256;
 
-    constructor(BEP20 _token) public
-        RisqStaking(_token, "RISQ BNB Staking lot", "rBNB") {}
+    IRisqStakingBNB public settlementFeeRecipient;
+    Option[] public override options;
+    uint256 public impliedVolRate;
+    uint256 public optionCollateralizationRatio = 100;
+    uint256 internal constant PRICE_DECIMALS = 1e8;
+    uint256 internal contractCreationTimestamp;
+    AggregatorV3Interface public priceProvider;
+    RisqBNBPool public pool;
 
-    function sendProfit() external payable override {
-        uint _totalSupply = totalSupply();
-        if (_totalSupply > 0) {
-            totalProfit += msg.value.mul(ACCURACY) / _totalSupply;
-            emit Profit(msg.value);
-        } else {
-            FALLBACK_RECIPIENT.transfer(msg.value);
+    /**
+     * @param pp The address of ChainLink BNB/USD price feed contract
+     */
+    constructor(AggregatorV3Interface pp, IRisqStakingBNB staking) public {
+        pool = new RisqBNBPool();
+        priceProvider = pp;
+        settlementFeeRecipient = staking;
+        impliedVolRate = 9500;
+        contractCreationTimestamp = block.timestamp;
+    }
+
+    /**
+     * @notice Can be used to update the contract in critical situations
+     *         in the first 14 days after deployment
+     */
+    function transferPoolOwnership() external onlyOwner {
+        require(block.timestamp < contractCreationTimestamp + 14 days);
+        pool.transferOwnership(owner());
+    }
+
+    /**
+     * @notice Used for adjusting the options prices while balancing asset's implied volatility rate
+     * @param value New IVRate value
+     */
+    function setImpliedVolRate(uint256 value) external onlyOwner {
+        require(value >= 1000, "ImpliedVolRate limit is too small");
+        impliedVolRate = value;
+    }
+
+    /**
+     * @notice Used for changing settlementFeeRecipient
+     * @param recipient New settlementFee recipient address
+     */
+    function setSettlementFeeRecipient(IRisqStakingBNB recipient) external onlyOwner {
+        require(block.timestamp < contractCreationTimestamp + 14 days);
+        require(address(recipient) != address(0));
+        settlementFeeRecipient = recipient;
+    }
+
+    /**
+     * @notice Used for changing option collateralization ratio
+     * @param value New optionCollateralizationRatio value
+     */
+    function setOptionCollaterizationRatio(uint value) external onlyOwner {
+        require(50 <= value && value <= 100, "wrong value");
+        optionCollateralizationRatio = value;
+    }
+
+    /**
+     * @notice Creates a new option
+     * @param period Option period in seconds (1 days <= period <= 4 weeks)
+     * @param amount Option amount
+     * @param strike Strike price of the option
+     * @param optionType Call or Put option type
+     * @return optionID Created option's ID
+     */
+    function create(
+        uint256 period,
+        uint256 amount,
+        uint256 strike,
+        OptionType optionType
+    )
+        external
+        payable
+        returns (uint256 optionID)
+    {
+        (uint256 total, uint256 settlementFee, uint256 strikeFee, ) = fees(
+            period,
+            amount,
+            strike,
+            optionType
+        );
+        require(period >= 1 days, "Period is too short");
+        require(period <= 4 weeks, "Period is too long");
+        require(amount > strikeFee, "Price difference is too large");
+        require(msg.value >= total, "Wrong value");
+        if (msg.value > total) msg.sender.transfer(msg.value - total);
+
+        uint256 strikeAmount = amount.sub(strikeFee);
+        optionID = options.length;
+        Option memory option = Option(
+            State.Active,
+            msg.sender,
+            strike,
+            amount,
+            strikeAmount.mul(optionCollateralizationRatio).div(100).add(strikeFee),
+            total.sub(settlementFee),
+            block.timestamp + period,
+            optionType
+        );
+
+        options.push(option);
+        settlementFeeRecipient.sendProfit {value: settlementFee}();
+        pool.lock {value: option.premium} (optionID, option.lockedAmount);
+        emit Create(optionID, msg.sender, settlementFee, total);
+    }
+
+    /**
+     * @notice Transfers an active option
+     * @param optionID ID of your option
+     * @param newHolder Address of new option holder
+     */
+    function transfer(uint256 optionID, address payable newHolder) external {
+        Option storage option = options[optionID];
+
+        require(newHolder != address(0), "new holder address is zero");
+        require(option.expiration >= block.timestamp, "Option has expired");
+        require(option.holder == msg.sender, "Wrong msg.sender");
+        require(option.state == State.Active, "Only active options could be transferred");
+
+        option.holder = newHolder;
+    }
+
+    /**
+     * @notice Exercises an active option
+     * @param optionID ID of your option
+     */
+    function exercise(uint256 optionID) external {
+        Option storage option = options[optionID];
+
+        require(option.expiration >= block.timestamp, "Option has expired");
+        require(option.holder == msg.sender, "Wrong msg.sender");
+        require(option.state == State.Active, "Wrong state");
+
+        option.state = State.Exercised;
+        uint256 profit = payProfit(optionID);
+
+        emit Exercise(optionID, profit);
+    }
+
+    /**
+     * @notice Unlocks an array of options
+     * @param optionIDs array of options
+     */
+    function unlockAll(uint256[] calldata optionIDs) external {
+        uint arrayLength = optionIDs.length;
+        for (uint256 i = 0; i < arrayLength; i++) {
+            unlock(optionIDs[i]);
         }
     }
 
-    function _transferProfit(uint amount) internal override {
-        msg.sender.transfer(amount);
+    /**
+     * @notice Used for getting the actual options prices
+     * @param period Option period in seconds (1 days <= period <= 4 weeks)
+     * @param amount Option amount
+     * @param strike Strike price of the option
+     * @return total Total price to be paid
+     * @return settlementFee Amount to be distributed to the RISQ token holders
+     * @return strikeFee Amount that covers the price difference in the ITM options
+     * @return periodFee Option period fee amount
+     */
+    function fees(
+        uint256 period,
+        uint256 amount,
+        uint256 strike,
+        OptionType optionType
+    )
+        public
+        view
+        returns (
+            uint256 total,
+            uint256 settlementFee,
+            uint256 strikeFee,
+            uint256 periodFee
+        )
+    {
+        (,int latestPrice,,,) = priceProvider.latestRoundData();
+        uint256 currentPrice = uint256(latestPrice);
+        settlementFee = getSettlementFee(amount);
+        periodFee = getPeriodFee(amount, period, strike, currentPrice, optionType);
+        strikeFee = getStrikeFee(amount, strike, currentPrice, optionType);
+        total = periodFee.add(strikeFee).add(settlementFee);
+    }
+
+    /**
+     * @notice Unlock funds locked in the expired options
+     * @param optionID ID of the option
+     */
+    function unlock(uint256 optionID) public {
+        Option storage option = options[optionID];
+        require(option.expiration < block.timestamp, "Option has not expired yet");
+        require(option.state == State.Active, "Option is not active");
+        option.state = State.Expired;
+        pool.unlock(optionID);
+        emit Expire(optionID, option.premium);
+    }
+
+    /**
+     * @notice Calculates settlementFee
+     * @param amount Option amount
+     * @return fee Settlement fee amount
+     */
+    function getSettlementFee(uint256 amount)
+        internal
+        pure
+        returns (uint256 fee)
+    {
+        return amount / 100;
+    }
+
+    /**
+     * @notice Calculates periodFee
+     * @param amount Option amount
+     * @param period Option period in seconds (1 days <= period <= 4 weeks)
+     * @param strike Strike price of the option
+     * @param currentPrice Current price of BNB
+     * @return fee Period fee amount
+     *
+     * amount < 1e30        |
+     * impliedVolRate < 1e10| => amount * impliedVolRate * strike < 1e60 < 2^uint256
+     * strike < 1e20 ($1T)  |
+     *
+     * in case amount * impliedVolRate * strike >= 2^256
+     * transaction will be reverted by the SafeMath
+     */
+    function getPeriodFee(
+        uint256 amount,
+        uint256 period,
+        uint256 strike,
+        uint256 currentPrice,
+        OptionType optionType
+    ) internal view returns (uint256 fee) {
+        if (optionType == OptionType.Put)
+            return amount
+                .mul(sqrt(period))
+                .mul(impliedVolRate)
+                .mul(strike)
+                .div(currentPrice)
+                .div(PRICE_DECIMALS);
+        else
+            return amount
+                .mul(sqrt(period))
+                .mul(impliedVolRate)
+                .mul(currentPrice)
+                .div(strike)
+                .div(PRICE_DECIMALS);
+    }
+
+    /**
+     * @notice Calculates strikeFee
+     * @param amount Option amount
+     * @param strike Strike price of the option
+     * @param currentPrice Current price of BNB
+     * @return fee Strike fee amount
+     */
+    function getStrikeFee(
+        uint256 amount,
+        uint256 strike,
+        uint256 currentPrice,
+        OptionType optionType
+    ) internal pure returns (uint256 fee) {
+        if (strike > currentPrice && optionType == OptionType.Put)
+            return strike.sub(currentPrice).mul(amount).div(currentPrice);
+        if (strike < currentPrice && optionType == OptionType.Call)
+            return currentPrice.sub(strike).mul(amount).div(currentPrice);
+        return 0;
+    }
+
+    /**
+     * @notice Sends profits in BNB from the BNB pool to an option holder's address
+     * @param optionID A specific option contract id
+     */
+    function payProfit(uint optionID)
+        internal
+        returns (uint profit)
+    {
+        Option memory option = options[optionID];
+        (, int latestPrice, , , ) = priceProvider.latestRoundData();
+        uint256 currentPrice = uint256(latestPrice);
+        if (option.optionType == OptionType.Call) {
+            require(option.strike <= currentPrice, "Current price is too low");
+            profit = currentPrice.sub(option.strike).mul(option.amount).div(currentPrice);
+        } else {
+            require(option.strike >= currentPrice, "Current price is too high");
+            profit = option.strike.sub(currentPrice).mul(option.amount).div(currentPrice);
+        }
+        if (profit > option.lockedAmount)
+            profit = option.lockedAmount;
+        pool.send(optionID, option.holder, profit);
+    }
+
+
+
+    /**
+     * @return result Square root of the number
+     */
+    function sqrt(uint256 x) private pure returns (uint256 result) {
+        result = x;
+        uint256 k = x.div(2).add(1);
+        while (k < result) (result, k) = (k, x.div(k).add(k).div(2));
     }
 }

@@ -21,45 +21,44 @@ pragma solidity 0.6.12;
 
 
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "../BSC/token/BEP20/BEP20.sol";
+import "../BSC/token/BEP20/SafeBEP20.sol";
+import "../BSC/access/Ownable.sol";
 
 
 abstract
 contract BondingCurve is Ownable {
     using SafeMath for uint;
-    using SafeERC20 for IERC20;
+    using SafeBEP20 for IBEP20;
 
-    IERC20 public token;
+    IBEP20 public token;
     uint public soldAmount;
     address payable public risqDevelopmentFund;
 
-    event Bought(address indexed account, uint amount, uint ethAmount);
-    event Sold(address indexed account, uint amount, uint ethAmount, uint comission);
+    event Bought(address indexed account, uint amount, uint bnbAmount);
+    event Sold(address indexed account, uint amount, uint bnbAmount, uint comission);
 
-    constructor(IERC20 _token) public {
+    constructor(IBEP20 _token) public {
         token = _token;
-        risqDevelopmentFund = msg.sender;
-        
+        risqDevelopmentFund = 0xf97a14b288B415053344d0E3273b093Fec550c19;
     }
 
     function buy(uint tokenAmount) external payable {
         uint nextSold = soldAmount.add(tokenAmount);
-        uint ethAmount = s(soldAmount, nextSold);
+        uint bnbAmount = s(soldAmount, nextSold);
         soldAmount = nextSold;
-        require(msg.value >= ethAmount, "Value is too small");
+        require(msg.value >= bnbAmount, "Value is too small");
         token.safeTransfer(msg.sender, tokenAmount);
-        if (msg.value > ethAmount)
-            msg.sender.transfer(msg.value - ethAmount);
-        emit Bought(msg.sender, tokenAmount, ethAmount);
+        if (msg.value > bnbAmount)
+            msg.sender.transfer(msg.value - bnbAmount);
+        emit Bought(msg.sender, tokenAmount, bnbAmount);
     }
 
     function sell(uint tokenAmount) external {
         uint nextSold = soldAmount.sub(tokenAmount);
-        uint ethAmount = s(nextSold, soldAmount);
-        uint comission = ethAmount / 10;
-        uint refund = ethAmount.sub(comission);
+        uint bnbAmount = s(nextSold, soldAmount);
+        uint comission = bnbAmount / 10;
+        uint refund = bnbAmount.sub(comission);
         require(comission > 0);
 
         soldAmount = nextSold;
@@ -68,8 +67,8 @@ contract BondingCurve is Ownable {
         msg.sender.transfer(refund);
         emit Sold(msg.sender, tokenAmount, refund, comission);
     }
-
-    // transfer balance to dev fund
+    
+    // transfer to dev fund 
 	function withdrawEther(uint256 amount) public onlyOwner {
         msg.sender.transfer(amount);
     }

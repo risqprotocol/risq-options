@@ -1,111 +1,40 @@
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-// File: ../BSC/GSN/Context.sol
+// SPDX-License-Identifier: MIT
 
-
-pragma solidity ^0.6.0;
-
-/*
- * @dev Provides information about the current execution context, including the
- * sender of the transaction and its data. While these are generally available
- * via msg.sender and msg.data, they should not be accessed in such a direct
- * manner, since when dealing with GSN meta-transactions the account sending and
- * paying for execution may not be the actual sender (as far as an application
- * is concerned).
- *
- * This contract is only required for intermediate, library-like contracts.
- */
-abstract contract Context {
-    function _msgSender() internal view virtual returns (address payable) {
-        return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes memory) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
-    }
-}
-
-// File: ../BSC/token/BEP20/IBEP20.sol
+// File: @openzeppelin/contracts/math/Math.sol
 
 
 pragma solidity ^0.6.0;
 
 /**
- * @dev Interface of the BEP20 standard as defined in the EIP.
+ * @dev Standard math utilities missing in the Solidity language.
  */
-interface IBEP20 {
+library Math {
     /**
-     * @dev Returns the amount of tokens in existence.
+     * @dev Returns the largest of two numbers.
      */
-    function totalSupply() external view returns (uint256);
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
 
     /**
-     * @dev Returns the amount of tokens owned by `account`.
+     * @dev Returns the smallest of two numbers.
      */
-    function balanceOf(address account) external view returns (uint256);
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
 
     /**
-     * @dev Moves `amount` tokens from the caller's account to `recipient`.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
+     * @dev Returns the average of two numbers. The result is rounded towards
+     * zero.
      */
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
-     *
-     * This value changes when {approve} or {transferFrom} are called.
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * IMPORTANT: Beware that changing an allowance with this method brings the risk
-     * that someone may use both the old and the new allowance by unfortunate
-     * transaction ordering. One possible solution to mitigate this race
-     * condition is to first reduce the spender's allowance to 0 and set the
-     * desired value afterwards:
-     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-     *
-     * Emits an {Approval} event.
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Moves `amount` tokens from `sender` to `recipient` using the
-     * allowance mechanism. `amount` is then deducted from the caller's
-     * allowance.
-     *
-     * Returns a boolean value indicating whether the operation succeeded.
-     *
-     * Emits a {Transfer} event.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
-    /**
-     * @dev Emitted when `value` tokens are moved from one account (`from`) to
-     * another (`to`).
-     *
-     * Note that `value` may be zero.
-     */
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
-    /**
-     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
-     * a call to {approve}. `value` is the new allowance.
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    function average(uint256 a, uint256 b) internal pure returns (uint256) {
+        // (a + b) / 2 can overflow, so we distribute
+        return (a / 2) + (b / 2) + ((a % 2 + b % 2) / 2);
+    }
 }
 
-// File: ../BSC/math/SafeMath.sol
+// File: @openzeppelin/contracts/math/SafeMath.sol
 
 
 pragma solidity ^0.6.0;
@@ -266,7 +195,112 @@ library SafeMath {
     }
 }
 
-// File: ../BSC/utils/Address.sol
+// File: @openzeppelin/contracts/GSN/Context.sol
+
+
+pragma solidity ^0.6.0;
+
+/*
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with GSN meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ *
+ * This contract is only required for intermediate, library-like contracts.
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address payable) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes memory) {
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+        return msg.data;
+    }
+}
+
+// File: @openzeppelin/contracts/token/BEP20/IBEP20.sol
+
+
+pragma solidity ^0.6.0;
+
+/**
+ * @dev Interface of the BEP20 standard as defined in the EIP.
+ */
+interface IBEP20 {
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() external view returns (uint256);
+
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `recipient`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     *
+     * This value changes when {approve} or {transferFrom} are called.
+     */
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * IMPORTANT: Beware that changing an allowance with this method brings the risk
+     * that someone may use both the old and the new allowance by unfortunate
+     * transaction ordering. One possible solution to mitigate this race
+     * condition is to first reduce the spender's allowance to 0 and set the
+     * desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     *
+     * Emits an {Approval} event.
+     */
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Moves `amount` tokens from `sender` to `recipient` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+    /**
+     * @dev Emitted when `value` tokens are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `value` may be zero.
+     */
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    /**
+     * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+     * a call to {approve}. `value` is the new allowance.
+     */
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+// File: @openzeppelin/contracts/utils/Address.sol
 
 
 pragma solidity ^0.6.2;
@@ -365,7 +399,7 @@ library Address {
      *
      * Requirements:
      *
-     * - the calling contract must have an BNB balance of at least `value`.
+     * - the calling contract must have an ETH balance of at least `value`.
      * - the called Solidity function must be `payable`.
      *
      * _Available since v3.1._
@@ -409,7 +443,7 @@ library Address {
     }
 }
 
-// File: ../BSC/token/BEP20/BEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/BEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -717,7 +751,7 @@ contract BEP20 is Context, IBEP20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }
 
-// File: ../BSC/token/BEP20/SafeBEP20.sol
+// File: @openzeppelin/contracts/token/BEP20/SafeBEP20.sol
 
 
 pragma solidity ^0.6.0;
@@ -793,503 +827,372 @@ library SafeBEP20 {
     }
 }
 
-// File: ../BSC/access/Ownable.sol
+// File: @openzeppelin/contracts/utils/ReentrancyGuard.sol
 
 
 pragma solidity ^0.6.0;
 
 /**
- * @dev Contract module which provides a basic access control mechanism, where
- * there is an account (an owner) that can be granted exclusive access to
- * specific functions.
+ * @dev Contract module that helps prevent reentrant calls to a function.
  *
- * By default, the owner account will be the one that deploys the contract. This
- * can later be changed with {transferOwnership}.
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
  *
- * This module is used through inheritance. It will make available the modifier
- * `onlyOwner`, which can be applied to your functions to restrict their use to
- * the owner.
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
  */
-contract Ownable is Context {
-    address private _owner;
+contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
 
-    /**
-     * @dev Initializes the contract setting the deployer as the initial owner.
-     */
+    uint256 private _status;
+
     constructor () internal {
-        address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
+        _status = _NOT_ENTERED;
     }
 
     /**
-     * @dev Returns the address of the current owner.
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and make it call a
+     * `private` function that does the actual work.
      */
-    function owner() public view returns (address) {
-        return _owner;
+    modifier nonReentrant() {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+
+        _;
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+}
+
+// File: contracts/Rewards/Synthetix/StakingRewards.sol
+
+pragma solidity ^0.6.12;
+
+
+
+
+
+
+// Inheritance
+// import "./interfaces/IStakingRewards.sol";
+// import "./RewardsDistributionRecipient.sol";
+// import "./Pausable.sol";
+// import "./Owned.sol";
+
+
+
+// https://docs.synthetix.io/contracts/Owned
+contract Owned {
+    address public owner;
+    address public nominatedOwner;
+
+    constructor(address _owner) public {
+        require(_owner != address(0), "Owner address cannot be 0");
+        owner = _owner;
+        emit OwnerChanged(address(0), _owner);
     }
 
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+    function nominateNewOwner(address _owner) external onlyOwner {
+        nominatedOwner = _owner;
+        emit OwnerNominated(_owner);
+    }
+
+    function acceptOwnership() external {
+        require(msg.sender == nominatedOwner, "You must be nominated before you can accept ownership");
+        emit OwnerChanged(owner, nominatedOwner);
+        owner = nominatedOwner;
+        nominatedOwner = address(0);
+    }
+
+    modifier onlyOwner {
+        _onlyOwner();
         _;
     }
 
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
+    function _onlyOwner() private view {
+        require(msg.sender == owner, "Only the contract owner may perform this action");
     }
 
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
-    }
-}
-
-// File: @chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol
-
-pragma solidity >=0.6.0;
-
-interface AggregatorV3Interface {
-  function decimals() external view returns (uint8);
-  function description() external view returns (string memory);
-  function version() external view returns (uint256);
-
-  // getRoundData and latestRoundData should both raise "No data present"
-  // if they do not have data to report, instead of returning unset values
-  // which could be misinterpreted as actual reported values.
-  function getRoundData(uint80 _roundId)
-    external
-    view
-    returns (
-      uint80 roundId,
-      int256 answer,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    );
-  function latestRoundData()
-    external
-    view
-    returns (
-      uint80 roundId,
-      int256 answer,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    );
-}
-
-// File: pancakeswap-peripheral/contracts/interfaces/IPancakeRouter01.sol
-
-pragma solidity >=0.6.2;
-
-interface IPancakeRouter01 {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
-
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-    function addLiquidityETH(
-        address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETH(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountToken, uint amountETH);
-    function removeLiquidityWithPermit(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETHWithPermit(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountToken, uint amountETH);
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        payable
-        returns (uint[] memory amounts);
-    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
-        external
-        payable
-        returns (uint[] memory amounts);
-
-    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
-}
-
-// File: contracts/Interfaces/Interfaces.sol
-
-pragma solidity 0.6.12;
-
-/**
- * Risq
- * Copyright (C) 2020 Risq Protocol
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
-
-
-
-
-
-interface ILiquidityPool {
-    struct LockedLiquidity { uint amount; uint premium; bool locked; }
-
-    event Profit(uint indexed id, uint amount);
-    event Loss(uint indexed id, uint amount);
-    event Provide(address indexed account, uint256 amount, uint256 writeAmount);
-    event Withdraw(address indexed account, uint256 amount, uint256 writeAmount);
-
-    function unlock(uint256 id) external;
-    function send(uint256 id, address payable account, uint256 amount) external;
-    function setLockupPeriod(uint value) external;
-    function totalBalance() external view returns (uint256 amount);
-    // function unlockPremium(uint256 amount) external;
+    event OwnerNominated(address newOwner);
+    event OwnerChanged(address oldOwner, address newOwner);
 }
 
 
-interface IBEPLiquidityPool is ILiquidityPool {
-    function lock(uint id, uint256 amount, uint premium) external;
-    function token() external view returns (IBEP20);
-}
 
-
-interface IBNBLiquidityPool is ILiquidityPool {
-    function lock(uint id, uint256 amount) external payable;
-}
-
-
-interface IRisqStaking {    
-    event Claim(address indexed acount, uint amount);
-    event Profit(uint amount);
-
-
-    function claimProfit() external returns (uint profit);
-    function buy(uint amount) external;
-    function sell(uint amount) external;
-    function profitOf(address account) external view returns (uint);
-}
-
-
-interface IRisqStakingBNB is IRisqStaking {
-    function sendProfit() external payable;
-}
-
-
-interface IRisqStakingBEP20 is IRisqStaking {
-    function sendProfit(uint amount) external;
-}
-
-
-interface IRisqOptions {
-    event Create(
-        uint256 indexed id,
-        address indexed account,
-        uint256 settlementFee,
-        uint256 totalFee
-    );
-
-    event Exercise(uint256 indexed id, uint256 profit);
-    event Expire(uint256 indexed id, uint256 premium);
-    enum State {Inactive, Active, Exercised, Expired}
-    enum OptionType {Invalid, Put, Call}
-
-    struct Option {
-        State state;
-        address payable holder;
-        uint256 strike;
-        uint256 amount;
-        uint256 lockedAmount;
-        uint256 premium;
-        uint256 expiration;
-        OptionType optionType;
-    }
-
-    function options(uint) external view returns (
-        State state,
-        address payable holder,
-        uint256 strike,
-        uint256 amount,
-        uint256 lockedAmount,
-        uint256 premium,
-        uint256 expiration,
-        OptionType optionType
-    );
-}
-
-// For the future integrations of non-standard BEP20 tokens such as USDT and others
-// interface BEP20Incorrect {
-//     event Transfer(address indexed from, address indexed to, uint256 value);
-//
-//     event Approval(address indexed owner, address indexed spender, uint256 value);
-//
-//     function transfer(address to, uint256 value) external;
-//
-//     function transferFrom(
-//         address from,
-//         address to,
-//         uint256 value
-//     ) external;
-//
-//     function approve(address spender, uint256 value) external;
-//     function balanceOf(address who) external view returns (uint256);
-//     function allowance(address owner, address spender) external view returns (uint256);
-//
-// }
-
-// File: contracts/Staking/RisqStaking.sol
-
-/**
- * Risq
- * Copyright (C) 2020 Risq Protocol
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-
-
-pragma solidity 0.6.12;
-
-
+// https://docs.synthetix.io/contracts/Pausable
 abstract
-contract RisqStaking is BEP20, IRisqStaking {
-    using SafeBEP20 for IBEP20;
-    using SafeMath for uint;
+contract Pausable is Owned {
+    uint public lastPauseTime;
+    bool public paused;
 
-    IBEP20 public immutable RISQ;
-    uint public constant MAX_SUPPLY = 500;
-    uint public constant LOT_PRICE = 10_000e18;
-    uint internal constant ACCURACY = 1e30;
-    address payable public immutable FALLBACK_RECIPIENT;
-
-    uint public totalProfit = 0;
-    mapping(address => uint) internal lastProfit;
-    mapping(address => uint) internal savedProfit;
-
-
-    uint256 public lockupPeriod = 1 days;
-    mapping(address => uint256) public lastBoughtTimestamp;
-    mapping(address => bool) public _revertTransfersInLockUpPeriod;
-
-    constructor(BEP20 _token, string memory name, string memory short)
-        public
-        BEP20(name, short)
-    {
-        RISQ = _token;
-        _setupDecimals(0);
-        FALLBACK_RECIPIENT = msg.sender;
-    }
-
-    function claimProfit() external override returns (uint profit) {
-        profit = saveProfit(msg.sender);
-        require(profit > 0, "Zero profit");
-        savedProfit[msg.sender] = 0;
-        _transferProfit(profit);
-        emit Claim(msg.sender, profit);
-    }
-
-    function buy(uint amount) external override {
-        lastBoughtTimestamp[msg.sender] = block.timestamp;
-        require(amount > 0, "Amount is zero");
-        require(totalSupply() + amount <= MAX_SUPPLY);
-        _mint(msg.sender, amount);
-        RISQ.safeTransferFrom(msg.sender, address(this), amount.mul(LOT_PRICE));
-    }
-
-    function sell(uint amount) external override lockupFree {
-        _burn(msg.sender, amount);
-        RISQ.safeTransfer(msg.sender, amount.mul(LOT_PRICE));
+    constructor() internal {
+        // This contract is abstract, and thus cannot be instantiated directly
+        require(owner != address(0), "Owner must be set");
+        // Paused will be false, and lastPauseTime will be 0 upon initialisation
     }
 
     /**
-     * @notice Used for ...
+     * @notice Change the paused state of the contract
+     * @dev Only the contract owner may call this.
      */
-    function revertTransfersInLockUpPeriod(bool value) external {
-        _revertTransfersInLockUpPeriod[msg.sender] = value;
-    }
-
-    function profitOf(address account) external view override returns (uint) {
-        return savedProfit[account].add(getUnsaved(account));
-    }
-
-    function getUnsaved(address account) internal view returns (uint profit) {
-        return totalProfit.sub(lastProfit[account]).mul(balanceOf(account)).div(ACCURACY);
-    }
-
-    function saveProfit(address account) internal returns (uint profit) {
-        uint unsaved = getUnsaved(account);
-        lastProfit[account] = totalProfit;
-        profit = savedProfit[account].add(unsaved);
-        savedProfit[account] = profit;
-    }
-
-    function _beforeTokenTransfer(address from, address to, uint256) internal override {
-        if (from != address(0)) saveProfit(from);
-        if (to != address(0)) saveProfit(to);
-        if (
-            lastBoughtTimestamp[from].add(lockupPeriod) > block.timestamp &&
-            lastBoughtTimestamp[from] > lastBoughtTimestamp[to]
-        ) {
-            require(
-                !_revertTransfersInLockUpPeriod[to],
-                "the recipient does not accept blocked funds"
-            );
-            lastBoughtTimestamp[to] = lastBoughtTimestamp[from];
+    function setPaused(bool _paused) external onlyOwner {
+        // Ensure we're actually changing the state before we do anything
+        if (_paused == paused) {
+            return;
         }
+
+        // Set our paused state.
+        paused = _paused;
+
+        // If applicable, set the last pause time.
+        if (paused) {
+            lastPauseTime = now;
+        }
+
+        // Let everyone know that our pause state has changed.
+        emit PauseChanged(paused);
     }
 
-    function _transferProfit(uint amount) internal virtual;
+    event PauseChanged(bool isPaused);
 
-    modifier lockupFree {
-        require(
-            lastBoughtTimestamp[msg.sender].add(lockupPeriod) <= block.timestamp,
-            "Action suspended due to lockup"
-        );
+    modifier notPaused {
+        require(!paused, "This action cannot be performed while the contract is paused");
         _;
     }
 }
 
-// File: contracts/Staking/RisqStakingBNB.sol
 
-/**
- * Risq
- * Copyright (C) 2020 Risq Protocol
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+// https://docs.synthetix.io/contracts/RewardsDistributionRecipient
+abstract
+contract RewardsDistributionRecipient is Owned {
+    address public rewardsDistribution;
 
-pragma solidity 0.6.12;
+    function notifyRewardAmount(uint256 reward) external virtual;
+
+    modifier onlyRewardsDistribution() {
+        require(msg.sender == rewardsDistribution, "Caller is not RewardsDistribution contract");
+        _;
+    }
+
+    function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
+        rewardsDistribution = _rewardsDistribution;
+    }
+}
 
 
-contract RisqStakingBNB is RisqStaking, IRisqStakingBNB {
-    using SafeMath for uint;
+interface IStakingRewards {
+    // Views
+    function lastTimeRewardApplicable() external view returns (uint256);
 
-    constructor(BEP20 _token) public
-        RisqStaking(_token, "RISQ BNB Staking lot", "rBNB") {}
+    function rewardPerToken() external view returns (uint256);
 
-    function sendProfit() external payable override {
-        uint _totalSupply = totalSupply();
-        if (_totalSupply > 0) {
-            totalProfit += msg.value.mul(ACCURACY) / _totalSupply;
-            emit Profit(msg.value);
-        } else {
-            FALLBACK_RECIPIENT.transfer(msg.value);
+    function earned(address account) external view returns (uint256);
+
+    function getRewardForDuration() external view returns (uint256);
+
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    // Mutative
+
+    function stake(uint256 amount) external;
+
+    function withdraw(uint256 amount) external;
+
+    function getReward() external;
+
+    function exit() external;
+}
+
+
+contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, ReentrancyGuard, Pausable {
+    using SafeMath for uint256;
+    using SafeBEP20 for IBEP20;
+
+    /* ========== STATE VARIABLES ========== */
+
+    IBEP20 public rewardsToken;
+    IBEP20 public stakingToken;
+    uint256 public periodFinish = 0;
+    uint256 public rewardRate = 0;
+    uint256 public rewardsDuration = 7 days;
+    uint256 public lastUpdateTime;
+    uint256 public rewardPerTokenStored;
+
+    mapping(address => uint256) public userRewardPerTokenPaid;
+    mapping(address => uint256) public rewards;
+
+    uint256 private _totalSupply;
+    mapping(address => uint256) private _balances;
+
+    /* ========== CONSTRUCTOR ========== */
+
+    constructor(
+        address _owner,
+        address _rewardsDistribution,
+        address _rewardsToken,
+        address _stakingToken
+    ) public Owned(_owner) {
+        rewardsToken = IBEP20(_rewardsToken);
+        stakingToken = IBEP20(_stakingToken);
+        rewardsDistribution = _rewardsDistribution;
+    }
+
+    /* ========== VIEWS ========== */
+
+    function totalSupply() external view override returns (uint256) {
+        return _totalSupply;
+    }
+
+    function balanceOf(address account) external view override returns (uint256) {
+        return _balances[account];
+    }
+
+    function lastTimeRewardApplicable() public view override returns (uint256) {
+        return Math.min(block.timestamp, periodFinish);
+    }
+
+    function rewardPerToken() public view override returns (uint256) {
+        if (_totalSupply == 0) {
+            return rewardPerTokenStored;
+        }
+        return
+            rewardPerTokenStored.add(
+                lastTimeRewardApplicable().sub(lastUpdateTime).mul(rewardRate).mul(1e18).div(_totalSupply)
+            );
+    }
+
+    function earned(address account) public view override returns (uint256) {
+        return _balances[account].mul(rewardPerToken().sub(userRewardPerTokenPaid[account])).div(1e18).add(rewards[account]);
+    }
+
+    function getRewardForDuration() external view override returns (uint256) {
+        return rewardRate.mul(rewardsDuration);
+    }
+
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    function stake(uint256 amount) external override nonReentrant notPaused updateReward(msg.sender) {
+        require(amount > 0, "Cannot stake 0");
+        _totalSupply = _totalSupply.add(amount);
+        _balances[msg.sender] = _balances[msg.sender].add(amount);
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+        emit Staked(msg.sender, amount);
+    }
+
+    function withdraw(uint256 amount) public override nonReentrant updateReward(msg.sender) {
+        require(amount > 0, "Cannot withdraw 0");
+        _totalSupply = _totalSupply.sub(amount);
+        _balances[msg.sender] = _balances[msg.sender].sub(amount);
+        stakingToken.safeTransfer(msg.sender, amount);
+        emit Withdrawn(msg.sender, amount);
+    }
+
+    function getReward() public override nonReentrant updateReward(msg.sender) {
+        uint256 reward = rewards[msg.sender];
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            rewardsToken.safeTransfer(msg.sender, reward);
+            emit RewardPaid(msg.sender, reward);
         }
     }
 
-    function _transferProfit(uint amount) internal override {
-        msg.sender.transfer(amount);
+    function exit() external override {
+        withdraw(_balances[msg.sender]);
+        getReward();
     }
+
+    /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function notifyRewardAmount(uint256 reward) external override onlyRewardsDistribution updateReward(address(0)) {
+        if (block.timestamp >= periodFinish) {
+            rewardRate = reward.div(rewardsDuration);
+        } else {
+            uint256 remaining = periodFinish.sub(block.timestamp);
+            uint256 leftover = remaining.mul(rewardRate);
+            rewardRate = reward.add(leftover).div(rewardsDuration);
+        }
+
+        // Ensure the provided reward amount is not more than the balance in the contract.
+        // This keeps the reward rate in the right range, preventing overflows due to
+        // very high values of rewardRate in the earned and rewardsPerToken functions;
+        // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
+        uint balance = rewardsToken.balanceOf(address(this));
+        require(rewardRate <= balance.div(rewardsDuration), "Provided reward too high");
+
+        lastUpdateTime = block.timestamp;
+        periodFinish = block.timestamp.add(rewardsDuration);
+        emit RewardAdded(reward);
+    }
+
+    // Added to support recovering LP Rewards from other systems to be distributed to holders
+    function recoverBEP20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+        // If it's SNX we have to query the token symbol to ensure its not a proxy or underlying
+        bool isSNX = (keccak256(bytes("SNX")) == keccak256(bytes(BEP20(tokenAddress).symbol())));
+        // Cannot recover the staking token or the rewards token
+        require(
+            tokenAddress != address(stakingToken) && tokenAddress != address(rewardsToken) && !isSNX,
+            "Cannot withdraw the staking or rewards tokens"
+        );
+        IBEP20(tokenAddress).safeTransfer(owner, tokenAmount);
+        emit Recovered(tokenAddress, tokenAmount);
+    }
+
+    function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
+        require(
+            periodFinish == 0 || block.timestamp > periodFinish,
+            "Previous rewards period must be complete before changing the duration for the new period"
+        );
+        rewardsDuration = _rewardsDuration;
+        emit RewardsDurationUpdated(rewardsDuration);
+    }
+
+    /* ========== MODIFIERS ========== */
+
+    modifier updateReward(address account) {
+        rewardPerTokenStored = rewardPerToken();
+        lastUpdateTime = lastTimeRewardApplicable();
+        if (account != address(0)) {
+            rewards[account] = earned(account);
+            userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        }
+        _;
+    }
+
+    /* ========== EVENTS ========== */
+
+    event RewardAdded(uint256 reward);
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardPaid(address indexed user, uint256 reward);
+    event RewardsDurationUpdated(uint256 newDuration);
+    event Recovered(address token, uint256 amount);
 }
