@@ -110,11 +110,4 @@ Hegic asset pricing for an option's underlying asset utilizes Chainlink oracles.
 | [GOOGL](https://bscscan.com/address/0xeDA73F8acb669274B15A977Cb0cdA57a84F18c2a)  | 0xeDA73F8acb669274B15A977Cb0cdA57a84F18c2a |
 | [TSLA](https://bscscan.com/address/0xEEA2ae9c074E87596A85ABE698B2Afebc9B57893)   | 0xEEA2ae9c074E87596A85ABE698B2Afebc9B57893 |
 
-### Where to buy $RISQ
-
-$RISQ can be purchased through the Options Desk on the bonding curve.
-
-| Purchasing venue contract                                                               | Address                                    | Github                                                                                                            |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| [Bonding curve](https://www.bscscan.com/address/0x2e60B09BE52982FC6bB0EaDCD5F6c9c197910067) | 0x2e60B09BE52982FC6bB0EaDCD5F6c9c197910067 | [BondingCurve.sol](https://github.com/risqprotocol/risq-options/blob/main/contracts/BondingCurve/BondingCurve.sol)   |
 
